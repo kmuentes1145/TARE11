@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Gestión de Inventario</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body class="bg-light">
+<script>
+  // ✅ Define la URL del backend una sola vez
+  const API_BASE = 'https://pat8.up.railway.app';
+
+  // Luego usa `${API_BASE}` en todas las llamadas
+  fetch(`${API_BASE}/auth/login`, { ... })
+  fetch(`${API_BASE}/productos`, { ... })
+  // etc.
+</script>
+<script>
+/* 🔗 URL DEL BACKEND EN RAILWAY */
+const API_URL = "https://pat8-production.up.railway.app";
+
+</script>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="container mt-5 text-center">
+  <div class="card mx-auto" style="max-width:400px">
+    <div class="card-body">
+      <h3>🔐 Login</h3>
+      <form id="loginForm">
+        <input type="email" id="email" class="form-control mb-2" placeholder="Email" required>
+        <input type="password" id="password" class="form-control mb-2" placeholder="Password" required>
+        <button class="btn btn-success w-100">Ingresar</button>
+        <button type="button" class="btn btn-link" onclick="mostrarRegistro()">Registrarse</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="registerScreen" class="container mt-5 text-center" style="display:none">
+  <div class="card mx-auto" style="max-width:400px">
+    <div class="card-body">
+      <h3>📝 Registro</h3>
+      <form id="registerForm">
+        <input type="text" id="regNombre" class="form-control mb-2" placeholder="Nombre" required>
+        <input type="email" id="regEmail" class="form-control mb-2" placeholder="Email" required>
+        <input type="password" id="regPassword" class="form-control mb-2" placeholder="Password" required>
+        <button class="btn btn-primary w-100">Registrar</button>
+        <button type="button" class="btn btn-link" onclick="mostrarLogin()">Volver</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTARIO -->
+<div id="inventarioScreen" style="display:none">
+<div class="container mt-4">
+
+<h4>📦 Inventario</h4>
+<button class="btn btn-danger btn-sm mb-3" onclick="cerrarSesion()">Cerrar sesión</button>
+
+<form id="formProducto" class="card p-3 mb-3">
+<input type="hidden" id="id">
+<input class="form-control mb-2" id="nombre" placeholder="Nombre" required>
+<input class="form-control mb-2" id="codigo" placeholder="Código" required>
+<input class="form-control mb-2" id="categoria" placeholder="Categoría">
+<input class="form-control mb-2" id="precio" type="number" placeholder="Precio" required>
+<input class="form-control mb-2" id="stock" type="number" placeholder="Stock" required>
+<input class="form-control mb-2" id="descripcion" placeholder="Descripción">
+<button class="btn btn-primary">Guardar</button>
+</form>
+
+<table class="table table-striped">
+<thead><tr><th>Nombre</th><th>Código</th><th>Stock</th><th>Acciones</th></tr></thead>
+<tbody id="listaProductos"></tbody>
+</table>
+
+</div>
+</div>
+
+<script>
+const loginScreen = document.getElementById("loginScreen");
+const registerScreen = document.getElementById("registerScreen");
+const inventarioScreen = document.getElementById("inventarioScreen");
+const lista = document.getElementById("listaProductos");
+
+function mostrarRegistro(){loginScreen.style.display="none";registerScreen.style.display="block";}
+function mostrarLogin(){registerScreen.style.display="none";loginScreen.style.display="block";}
+
+document.getElementById("registerForm").onsubmit = async e =>{
+e.preventDefault();
+await fetch(`${API_URL}/auth/register`,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+nombre:regNombre.value,
+email:regEmail.value,
+password:regPassword.value
+})
+});
+alert("Usuario registrado");
+mostrarLogin();
+};
+
+document.getElementById("loginForm").onsubmit = async e =>{
+e.preventDefault();
+const res = await fetch(`${API_URL}/auth/login`,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email:email.value,password:password.value})
+});
+const data = await res.json();
+if(res.ok){
+localStorage.setItem("usuario",JSON.stringify(data.usuario));
+loginScreen.style.display="none";
+inventarioScreen.style.display="block";
+cargarProductos();
+}else alert(data.msg);
+};
+
+function cerrarSesion(){
+localStorage.clear();
+location.reload();
+}
+
+async function cargarProductos(){
+const res = await fetch(`${API_URL}/productos`);
+const data = await res.json();
+lista.innerHTML="";
+data.forEach(p=>{
+lista.innerHTML+=`
+<tr>
+<td>${p.nombre}</td>
+<td>${p.codigo}</td>
+<td>${p.stock}</td>
+<td>
+<button class="btn btn-danger btn-sm" onclick="eliminar(${p.id})">Eliminar</button>
+</td>
+</tr>`;
+});
+}
+
+document.getElementById("formProducto").onsubmit = async e =>{
+e.preventDefault();
+await fetch(`${API_URL}/productos`,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+nombre:nombre.value,
+codigo:codigo.value,
+categoria:categoria.value,
+precio:precio.value,
+stock:stock.value,
+descripcion:descripcion.value
+})
+});
+e.target.reset();
+cargarProductos();
+};
+
+async function eliminar(id){
+await fetch(`${API_URL}/productos/${id}`,{method:"DELETE"});
+cargarProductos();
+}
+</script>
+</body>
+</html>
