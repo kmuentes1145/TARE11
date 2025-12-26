@@ -1,1 +1,43 @@
-codigo init/db.js >const mysql = require("mysql2/promise"); const bcrypt = require("bcryptjs"); (async()=>{ const db = await mysql.createConnection({ host:process.env.DB_HOST, user:process.env.DB_USER, password:process.env.DB_PASSWORD, database:process.env.DB_NAME, port:process.env.DB_PORT || 3306 }); await db.query( CREATE TABLE IF NOT EXISTS users( id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100), email VARCHAR(100) UNIQUE, password VARCHAR(255) )); await db.query( CREATE TABLE IF NOT EXISTS productos( id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100), codigo VARCHAR(50), categoria VARCHAR(50), precio DECIMAL(10,2), stock INT, descripcion TEXT )); const hash = await bcrypt.hash("admin123",10); await db.query( "INSERT IGNORE INTO users(nombre,email,password) VALUES('Admin','admin@example.com',?)", [hash] ); console.log("✅ Base de datos lista"); process.exit(); })(); server.js: const express = require("express"); const mysql = require("mysql2/promise"); const cors = require("cors"); app.use(cors()); const bcrypt = require("bcryptjs"); const app = express(); const PORT = process.env.PORT || 5000; app.use(cors({ origin: "*" })); app.use(express.json()); const db = mysql.createPool({ host: process.env.DB_HOST, user: process.env.DB_USER, password: process.env.DB_PASSWORD, database: process.env.DB_NAME, port: process.env.DB_PORT || 3306 }); app.get("/", (req,res)=>res.send("API OK")); app.post("/auth/register", async(req,res)=>{ const {nombre,email,password}=req.body; const hash=await bcrypt.hash(password,10); await db.query("INSERT INTO users(nombre,email,password) VALUES(?,?,?)",[nombre,email,hash]); res.json({msg:"Registrado"}); }); app.post("/auth/login", async(req,res)=>{ const {email,password}=req.body; const [u]=await db.query("SELECT * FROM users WHERE email=?",[email]); if(!u.length) return res.status(401).json({msg:"Error"}); const ok=await bcrypt.compare(password,u[0].password); if(!ok) return res.status(401).json({msg:"Error"}); res.json({usuario:{id:u[0].id,nombre:u[0].nombre,email}}); }); app.get("/productos", async(req,res)=>{ const [rows]=await db.query("SELECT * FROM productos"); res.json(rows); }); app.post("/productos", async(req,res)=>{ const p=req.body; await db.query( "INSERT INTO productos(nombre,codigo,categoria,precio,stock,descripcion) VALUES(?,?,?,?,?,?)", [p.nombre,p.codigo,p.categoria,p.precio,p.stock,p.descripcion] ); res.json({msg:"Producto creado"}); }); app.delete("/productos/:id", async(req,res)=>{ await db.query("DELETE FROM productos WHERE id=?",[req.params.id]); res.json({msg:"Eliminado"});
+const mysql = require("mysql2/promise");
+const bcrypt = require("bcryptjs");
+
+(async () => {
+  const db = await mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306
+  });
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100),
+      email VARCHAR(100) UNIQUE,
+      password VARCHAR(255)
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS productos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100),
+      codigo VARCHAR(50),
+      categoria VARCHAR(50),
+      precio DECIMAL(10,2),
+      stock INT,
+      descripcion TEXT
+    )
+  `);
+
+  const hash = await bcrypt.hash("admin123", 10);
+
+  await db.query(
+    "INSERT IGNORE INTO users(nombre, email, password) VALUES ('Admin', 'admin@example.com', ?)",
+    [hash]
+  );
+
+  console.log("✅ Base de datos lista");
+  process.exit();
+})();
